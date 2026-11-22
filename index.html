@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1f5135">
+  <title>倒木診断 v0.1</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icon_tree-risk.jpg" type="image/jpg">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <style>
+    :root {
+      --primary: #1f5135;
+      --primary-light: #2e734c;
+      --bg: #f4f6f5;
+      --card: #ffffff;
+      --text: #222222;
+      --muted: #666666;
+      --border: #dcdcdc;
+      --safe: #1b8a4b;
+      --warn: #d97706;
+      --danger: #dc2626;
+      --critical: #7f1d1d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Meiryo", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding-bottom: 40px;
+    }
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.15rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .ver-badge {
+      font-size: 0.72rem;
+      background: rgba(255,255,255,0.2);
+      padding: 2px 7px;
+      border-radius: 10px;
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+      color: var(--primary);
+      border-left: 4px solid var(--primary);
+      padding-left: 8px;
+    }
+    .notice-box {
+      background: #fffbeb;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 0.8rem;
+      color: #78350f;
+    }
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    button, .file-label {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: 0.15s;
+    }
+    button.primary, .file-label.primary {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    button.active-step {
+      background: #e6f4ec;
+      border-color: var(--primary);
+      color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(31,81,53,0.2);
+    }
+    button.danger-outline {
+      color: var(--danger);
+      border-color: #fca5a5;
+      background: #fef2f2;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    input[type="file"] { display: none; }
+
+    .step-guide {
+      background: #eef6f1;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+      color: #163b26;
+      font-weight: 600;
+    }
+    .canvas-wrap {
+      position: relative;
+      width: 100%;
+      background: #222;
+      border-radius: 8px;
+      overflow: hidden;
+      min-height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas#treeCanvas {
+      display: block;
+      max-width: 100%;
+      max-height: 62vh;
+      touch-action: none;
+      cursor: crosshair;
+    }
+    .canvas-placeholder {
+      color: #bbb;
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 30px 16px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+    .field label {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    .field input, .field select {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-size: 1rem;
+      background: #fff;
+    }
+    .slender-bar {
+      margin-top: 8px;
+      font-size: 0.84rem;
+      padding: 6px 10px;
+      background: #f8faf9;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .check-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+    .check-item input {
+      margin-top: 3px;
+      transform: scale(1.2);
+    }
+    .check-sub {
+      display: block;
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+    .wind-box {
+      background: #f0f7ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .wind-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .wind-val {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #1d4ed8;
+    }
+    input[type="range"] {
+      width: 100%;
+      height: 28px;
+      accent-color: #1d4ed8;
+    }
+    .preset-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .preset-row button {
+      flex: 1;
+      padding: 6px 4px;
+      font-size: 0.78rem;
+    }
+    .result-banner {
+      border-radius: 10px;
+      padding: 14px;
+      color: #fff;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .rank-safe { background: var(--safe); }
+    .rank-warn { background: var(--warn); }
+    .rank-danger { background: var(--danger); }
+    .rank-critical { background: var(--critical); }
+    .rank-pending { background: #6b7280; }
+    .result-rank {
+      font-size: 1.4rem;
+      font-weight: 800;
+    }
+    .result-sub {
+      font-size: 0.86rem;
+      opacity: 0.95;
+      margin-top: 3px;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .metric-box {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fafafa;
+    }
+    .metric-title {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .metric-main {
+      font-size: 1.2rem;
+      font-weight: 800;
+      margin: 2px 0;
+    }
+    .metric-sub {
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+    .detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+      margin-top: 6px;
+    }
+    .detail-table th, .detail-table td {
+      border-bottom: 1px solid #eee;
+      padding: 6px 4px;
+      text-align: left;
+    }
+    .detail-table td { text-align: right; font-weight: 600; }
+    .footer-tools {
+      text-align: center;
+      padding: 10px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .sw-status {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌲 倒木診断 <span class="ver-badge">v0.1 試作版</span></h1>
+    <span id="offlineBadge" class="ver-badge">オンライン</span>
+  </header>
+
+  <main>
+    <div class="notice-box">
+      <strong>【一次診断の目安ツール】</strong><br>
+      針葉樹（スギ・ヒノキ等）を対象とした簡易力学判定です。地中の根の状態や幹内部の腐朽は写真から判定できないため、<strong>立木や土壌の状態で大きく変わります。優先伐採・詳細点検の目安</strong>としてご活用ください。
+    </div>
+
+    <!-- 1. 写真・マーキング -->
+    <section class="card">
+      <h2>1. 写真の読み込みと位置指定</h2>
+      <div class="btn-row">
+        <label class="file-label primary">
+          📷 撮影 / 写真選択
+          <input type="file" id="photoInput" accept="image/*">
+        </label>
+        <button type="button" id="demoBtn">🧪 テスト木を描画</button>
+        <button type="button" id="clearMarksBtn" class="danger-outline">やり直し</button>
+      </div>
+
+      <div class="btn-row">
+        <button type="button" class="step-btn active-step" data-mode="base">① 根元</button>
+        <button type="button" class="step-btn" data-mode="top">② 樹頂</button>
+        <button type="button" class="step-btn" data-mode="crown">③ 樹冠を囲む</button>
+      </div>
+
+      <div id="stepGuide" class="step-guide">
+        まずは写真を読み込むか「テスト木を描画」を押してください。
+      </div>
+
+      <div class="canvas-wrap">
+        <div id="placeholder" class="canvas-placeholder">
+          立木の真横付近から、根元〜樹頂まで写った写真を読み込んでください
+        </div>
+        <canvas id="treeCanvas" style="display:none;"></canvas>
+      </div>
+    </section>
+
+    <!-- 2. 立木データ -->
+    <section class="card">
+      <h2>2. 樹種・計測値の入力</h2>
+      <div class="form-grid">
+        <div class="field">
+          <label for="species">樹種（針葉樹）</label>
+          <select id="species">
+            <option value="sugi">スギ</option>
+            <option value="hinoki">ヒノキ</option>
+            <option value="akamatsu">アカマツ</option>
+            <option value="karamatsu">カラマツ</option>
+            <option value="other">その他針葉樹</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="treeHeight">樹高 H (m)</label>
+          <input type="number" id="treeHeight" value="20" min="3" max="50" step="0.5" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="dbh">胸高直径 D (cm)</label>
+          <input type="number" id="dbh" value="28" min="5" max="150" step="1" inputmode="decimal">
+        </div>
+      </div>
+      <div class="slender-bar">
+        <span>形状比（樹高 ÷ 直径）</span>
+        <strong id="slendernessVal">71（標準）</strong>
+      </div>
+    </section>
+
+    <!-- 3. 立地・状態の簡易チェック -->
+    <section class="card">
+      <h2>3. 立地・劣化の簡易チェック（該当に✓）</h2>
+      <div class="check-list">
+        <label class="check-item">
+          <input type="checkbox" id="chkSlope">
+          <div>
+            <strong>道路法面・切土などで根が切れている／浅い</strong>
+            <span class="check-sub">根返り耐力を目安として下げます（×0.70）</span>
+          </div>
+        </label>
+        <label class="check-item">
+          <input type="checkbox" id="chkWet">
+          <div>
+            <strong>雨天時にぬかるむ・湧水がある・軟弱土壌</strong>
+            <span class="check-sub">根返り耐力を目安として下げます（×0.75）</span>
+          </div>
+        </label>
+        <label class="check-item">
+          <input type="checkbox" id="chkEdge">
+          <div>
+            <strong>林縁・孤立木で風をまともに受ける</strong>
+            <span class="check-sub">風荷重を安全側へ割り増します（×1.15）</span>
+          </div>
+        </label>
+        <label class="check-item">
+          <input type="checkbox" id="chkDecay">
+          <div>
+            <strong>根元や幹に腐朽・空洞・キノコ・大きな傷がある</strong>
+            <span class="check-sub">幹折れ・根返り耐力を大きく下げます（×0.60）</span>
+          </div>
+        </label>
+      </div>
+    </section>
+
+    <!-- 4. 風速シミュレーション・診断結果 -->
+    <section class="card">
+      <h2>4. 診断結果（瞬間最大風速シミュレーション）</h2>
+      <div class="wind-box">
+        <div class="wind-header">
+          <span style="font-weight:600; font-size:0.9rem;">想定する瞬間最大風速</span>
+          <span class="wind-val"><span id="windDisplay">25</span> m/s</span>
+        </div>
+        <input type="range" id="windSlider" min="10" max="50" step="1" value="25">
+        <div class="preset-row">
+          <button type="button" data-wind="15">強風 15m/s</button>
+          <button type="button" data-wind="25">暴風 25m/s</button>
+          <button type="button" data-wind="35">台風 35m/s</button>
+        </div>
+      </div>
+
+      <div id="resultBanner" class="result-banner rank-pending">
+        <div id="resultRank" class="result-rank">写真で位置指定を完了してください</div>
+        <div id="resultSub" class="result-sub">①根元 → ②樹頂 → ③樹冠囲み を設定すると自動計算します</div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-box">
+          <div class="metric-title">🪵 幹折れリスク</div>
+          <div id="breakSf" class="metric-main">--</div>
+          <div id="breakCrit" class="metric-sub">限界風速目安: --</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-title">🌱 根返りリスク</div>
+          <div id="rootSf" class="metric-main">--</div>
+          <div id="rootCrit" class="metric-sub">限界風速目安: --</div>
+        </div>
+      </div>
+
+      <table class="detail-table">
+        <tr><th>樹冠の投影面積 (推定)</th><td id="outArea">--</td></tr>
+        <tr><th>樹冠の重心高さ zc</th><td id="outZc">--</td></tr>
+        <tr><th>根元からの重心ズレ xc</th><td id="outXc">--</td></tr>
+        <tr><th>転倒モーメント（風＋傾き自重）</th><td id="outMoment">--</td></tr>
+        <tr><th>抵抗モーメント（幹折れ / 根返り）</th><td id="outResist">--</td></tr>
+      </table>
+
+      <div class="btn-row" style="margin-top:12px; margin-bottom:0;">
+        <button type="button" id="copyReportBtn" class="primary" style="flex:1;">📋 診断メモをコピー</button>
+      </div>
+    </section>
+
+    <div class="footer-tools">
+      <div id="swStatus" class="sw-status">PWAオフライン準備確認中...</div>
+      <button type="button" id="forceResetBtn" class="danger-outline" style="font-size:0.78rem; padding:6px 10px;">
+        🔄 キャッシュ完全リセット＆強制アップデート
+      </button>
+    </div>
+  </main>
+
+  <script>
+    // ====== 樹種パラメータ（目安値） ======
+    // mor: 立木実大材の曲げ強さ目安(MPa), density: 生材密度(kg/m3), cReg: 根返り抵抗係数(N*m/kg)
+    const SPECIES = {
+      sugi:      { name: 'スギ',       mor: 32, density: 750, cReg: 130 },
+      hinoki:    { name: 'ヒノキ',     mor: 40, density: 800, cReg: 115 },
+      akamatsu:  { name: 'アカマツ',   mor: 38, density: 820, cReg: 140 },
+      karamatsu: { name: 'カラマツ',   mor: 38, density: 800, cReg: 125 },
+      other:     { name: 'その他針葉樹', mor: 34, density: 770, cReg: 125 }
+    };
+
+    // ====== 状態管理 ======
+    const state = {
+      img: null,
+      mode: 'base', // 'base' | 'top' | 'crown'
+      basePt: null, // {x, y} 画像ピクセル座標
+      topPt: null,
+      crownPts: [],
+      isDrawing: false,
+      crownStats: null, // { areaPx, cx, cy }
+      lastReportText: ''
+    };
+
+    const canvas = document.getElementById('treeCanvas');
+    const ctx = canvas.getContext('2d');
+    const placeholder = document.getElementById('placeholder');
+    const stepGuide = document.getElementById('stepGuide');
+
+    // ====== UI要素 ======
+    const els = {
+      photoInput: document.getElementById('photoInput'),
+      demoBtn: document.getElementById('demoBtn'),
+      clearMarksBtn: document.getElementById('clearMarksBtn'),
+      species: document.getElementById('species'),
+      treeHeight: document.getElementById('treeHeight'),
+      dbh: document.getElementById('dbh'),
+      slendernessVal: document.getElementById('slendernessVal'),
+      chkSlope: document.getElementById('chkSlope'),
+      chkWet: document.getElementById('chkWet'),
+      chkEdge: document.getElementById('chkEdge'),
+      chkDecay: document.getElementById('chkDecay'),
+      windSlider: document.getElementById('windSlider'),
+      windDisplay: document.getElementById('windDisplay'),
+      resultBanner: document.getElementById('resultBanner'),
+      resultRank: document.getElementById('resultRank'),
+      resultSub: document.getElementById('resultSub'),
+      breakSf: document.getElementById('breakSf'),
+      breakCrit: document.getElementById('breakCrit'),
+      rootSf: document.getElementById('rootSf'),
+      rootCrit: document.getElementById('rootCrit'),
+      outArea: document.getElementById('outArea'),
+      outZc: document.getElementById('outZc'),
+      outXc: document.getElementById('outXc'),
+      outMoment: document.getElementById('outMoment'),
+      outResist: document.getElementById('outResist'),
+      copyReportBtn: document.getElementById('copyReportBtn'),
+      offlineBadge: document.getElementById('offlineBadge'),
+      swStatus: document.getElementById('swStatus'),
+      forceResetBtn: document.getElementById('forceResetBtn')
+    };
+
+    // ====== オンライン状態表示 ======
+    function updateOnlineStatus() {
+      const online = navigator.onLine;
+      els.offlineBadge.textContent = online ? 'オンライン' : 'オフライン動作中';
+      els.offlineBadge.style.background = online ? 'rgba(255,255,255,0.2)' : '#d97706';
+    }
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus();
+
+    // ====== モード切替 ======
+    function setMode(mode) {
+      state.mode = mode;
+      document.querySelectorAll('.step-btn').forEach(btn => {
+        btn.classList.toggle('active-step', btn.dataset.mode === mode);
+      });
+      updateGuide();
+    }
+
+    function updateGuide() {
+      if (!state.img) {
+        stepGuide.textContent = 'まずは写真を読み込むか「テスト木を描画」を押してください。';
+        return;
+      }
+      if (state.mode === 'base') {
+        stepGuide.textContent = '① 立木の【根元（地際）】をタップしてください。';
+      } else if (state.mode === 'top') {
+        stepGuide.textContent = '② 立木の【樹頂（一番てっぺん）】をタップしてください。';
+      } else {
+        stepGuide.textContent = '③ 枝葉（樹冠）の範囲を指やマウスでぐるっと囲んでください。';
+      }
+    }
+
+    document.querySelectorAll('.step-btn').forEach(btn => {
+      btn.addEventListener('click', () => setMode(btn.dataset.mode));
+    });
+
+    // ====== 画像読み込み ======
+    els.photoInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => loadImageToCanvas(img);
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function loadImageToCanvas(img) {
+      // 最大辺を1000pxにリサイズして高速＆省メモリ化
+      const maxDim = 1000;
+      let w = img.width;
+      let h = img.height;
+      if (w > maxDim || h > maxDim) {
+        const ratio = Math.min(maxDim / w, maxDim / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      const off = document.createElement('canvas');
+      off.width = w;
+      off.height = h;
+      off.getContext('2d').drawImage(img, 0, 0, w, h);
+
+      const resized = new Image();
+      resized.onload = () => {
+        state.img = resized;
+        canvas.width = w;
+        canvas.height = h;
+        placeholder.style.display = 'none';
+        canvas.style.display = 'block';
+        resetMarks();
+      };
+      resized.src = off.toDataURL('image/jpeg', 0.9);
+    }
+
+    // ====== テスト用の木（斜面上の傾いたスギ）描画 ======
+    els.demoBtn.addEventListener('click', () => {
+      const off = document.createElement('canvas');
+      off.width = 600;
+      off.height = 800;
+      const c = off.getContext('2d');
+
+      // 背景（空）
+      const grad = c.createLinearGradient(0, 0, 0, 800);
+      grad.addColorStop(0, '#cfe8ff');
+      grad.addColorStop(1, '#eef6ff');
+      c.fillStyle = grad;
+      c.fillRect(0, 0, 600, 800);
+
+      // 斜面と道路
+      c.fillStyle = '#7c8b6f';
+      c.beginPath();
+      c.moveTo(0, 760);
+      c.lineTo(600, 500);
+      c.lineTo(600, 800);
+      c.lineTo(0, 800);
+      c.closePath();
+      c.fill();
+
+      // 幹（少し左へ傾き）
+      c.strokeStyle = '#5c4033';
+      c.lineWidth = 18;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(330, 640);
+      c.quadraticCurveTo(300, 400, 275, 110);
+      c.stroke();
+
+      // 樹冠（左側に張り出した針葉樹）
+      c.fillStyle = '#2d5a27';
+      c.beginPath();
+      c.moveTo(275, 95);
+      c.lineTo(175, 300);
+      c.lineTo(205, 310);
+      c.lineTo(150, 480);
+      c.lineTo(295, 450);
+      c.lineTo(355, 350);
+      c.lineTo(325, 320);
+      c.lineTo(345, 220);
+      c.closePath();
+      c.fill();
+
+      // 2mポール（赤白）
+      for (let i = 0; i < 6; i++) {
+        c.fillStyle = i % 2 === 0 ? '#dc2626' : '#ffffff';
+        c.fillRect(348, 560 + i * 13, 8, 13);
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        state.img = img;
+        canvas.width = 600;
+        canvas.height = 800;
+        placeholder.style.display = 'none';
+        canvas.style.display = 'block';
+        resetMarks();
+      };
+      img.src = off.toDataURL('image/png');
+    });
+
+    function resetMarks() {
+      state.basePt = null;
+      state.topPt = null;
+      state.crownPts = [];
+      state.crownStats = null;
+      setMode('base');
+      renderCanvas();
+      calculate();
+    }
+
+    els.clearMarksBtn.addEventListener('click', () => {
+      if (!state.img) return;
+      resetMarks();
+    });
+
+    // ====== Canvas 座標変換 & Pointerイベント ======
+    function getCanvasPoint(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      if (!state.img) return;
+      e.preventDefault();
+      canvas.setPointerCapture(e.pointerId);
+      const pt = getCanvasPoint(e);
+
+      if (state.mode === 'base') {
+        state.basePt = pt;
+        setMode('top');
+        renderCanvas();
+        calculate();
+      } else if (state.mode === 'top') {
+        state.topPt = pt;
+        setMode('crown');
+        renderCanvas();
+        calculate();
+      } else if (state.mode === 'crown') {
+        state.isDrawing = true;
+        state.crownPts = [pt];
+        state.crownStats = null;
+        renderCanvas();
+      }
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (!state.isDrawing || state.mode !== 'crown') return;
+      e.preventDefault();
+      const pt = getCanvasPoint(e);
+      const last = state.crownPts[state.crownPts.length - 1];
+      if (Math.hypot(pt.x - last.x, pt.y - last.y) >= 4) {
+        state.crownPts.push(pt);
+        renderCanvas();
+      }
+    });
+
+    function finishCrownDrawing() {
+      if (!state.isDrawing) return;
+      state.isDrawing = false;
+      if (state.crownPts.length >= 5) {
+        state.crownStats = computeCrownMaskStats(state.crownPts, canvas.width, canvas.height);
+      } else {
+        state.crownPts = [];
+        state.crownStats = null;
+      }
+      renderCanvas();
+      calculate();
+    }
+
+    canvas.addEventListener('pointerup', finishCrownDrawing);
+    canvas.addEventListener('pointercancel', finishCrownDrawing);
+
+    // ====== 樹冠ポリゴンから面積(px^2)と重心(px)を安定算出 ======
+    function computeCrownMaskStats(pts, w, h) {
+      const scale = Math.min(1, 320 / Math.max(w, h));
+      const mw = Math.max(1, Math.round(w * scale));
+      const mh = Math.max(1, Math.round(h * scale));
+
+      const off = document.createElement('canvas');
+      off.width = mw;
+      off.height = mh;
+      const c = off.getContext('2d');
+      c.fillStyle = '#000';
+      c.beginPath();
+      pts.forEach((p, idx) => {
+        const x = p.x * scale;
+        const y = p.y * scale;
+        if (idx === 0) c.moveTo(x, y);
+        else c.lineTo(x, y);
+      });
+      c.closePath();
+      c.fill();
+
+      const data = c.getImageData(0, 0, mw, mh).data;
+      let count = 0;
+      let sumX = 0;
+      let sumY = 0;
+      for (let y = 0; y < mh; y++) {
+        const row = y * mw * 4;
+        for (let x = 0; x < mw; x++) {
+          if (data[row + x * 4 + 3] > 128) {
+            count++;
+            sumX += x;
+            sumY += y;
+          }
+        }
+      }
+      if (count === 0) return null;
+      return {
+        areaPx: count / (scale * scale),
+        cx: (sumX / count) / scale,
+        cy: (sumY / count) / scale
+      };
+    }
+
+    // ====== Canvas 描画 ======
+    function renderCanvas() {
+      if (!state.img) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(state.img, 0, 0);
+
+      const lw = Math.max(2, canvas.width / 220);
+
+      // 樹冠ポリゴン
+      if (state.crownPts.length > 1) {
+        ctx.save();
+        ctx.beginPath();
+        state.crownPts.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        if (!state.isDrawing) ctx.closePath();
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.30)';
+        ctx.strokeStyle = '#16a34a';
+        ctx.lineWidth = lw;
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 根元からの鉛直基準線
+      if (state.basePt) {
+        ctx.save();
+        ctx.setLineDash([lw * 3, lw * 2]);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.lineWidth = lw * 0.9;
+        ctx.beginPath();
+        ctx.moveTo(state.basePt.x, state.basePt.y);
+        ctx.lineTo(state.basePt.x, 0);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 根元〜樹頂ライン
+      if (state.basePt && state.topPt) {
+        ctx.save();
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = lw;
+        ctx.beginPath();
+        ctx.moveTo(state.basePt.x, state.basePt.y);
+        ctx.lineTo(state.topPt.x, state.topPt.y);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 重心と水平ズレの可視化
+      if (state.crownStats) {
+        const { cx, cy } = state.crownStats;
+        if (state.basePt) {
+          ctx.save();
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = lw * 1.1;
+          ctx.beginPath();
+          ctx.moveTo(state.basePt.x, cy);
+          ctx.lineTo(cx, cy);
+          ctx.stroke();
+          ctx.restore();
+        }
+        drawMarker(cx, cy, '#ef4444', '重心', lw);
+      }
+
+      if (state.basePt) drawMarker(state.basePt.x, state.basePt.y, '#2563eb', '根元', lw);
+      if (state.topPt) drawMarker(state.topPt.x, state.topPt.y, '#0ea5e9', '樹頂', lw);
+    }
+
+    function drawMarker(x, y, color, label, lw) {
+      const r = lw * 3.2;
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = lw;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = `bold ${Math.round(lw * 6)}px sans-serif`;
+      const tx = x + r + lw * 2;
+      const ty = y + lw * 2;
+      ctx.lineWidth = lw * 1.6;
+      ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+      ctx.strokeText(label, tx, ty);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(label, tx, ty);
+      ctx.restore();
+    }
+
+    // ====== 力学計算 ======
+    function calculate() {
+      const H = Math.max(1, parseFloat(els.treeHeight.value) || 20);
+      const Dcm = Math.max(1, parseFloat(els.dbh.value) || 28);
+      const D = Dcm / 100; // m
+      const V = parseFloat(els.windSlider.value) || 25;
+      els.windDisplay.textContent = V;
+
+      // 形状比
+      const slenderness = H / D;
+      let slLabel = '安定';
+      if (slenderness >= 100) slLabel = '極めて高い（要警戒）';
+      else if (slenderness >= 80) slLabel = '高め（注意）';
+      else if (slenderness >= 65) slLabel = '標準';
+      els.slendernessVal.textContent = `${slenderness.toFixed(0)}（${slLabel}）`;
+      els.slendernessVal.style.color = slenderness >= 100 ? '#dc2626' : (slenderness >= 80 ? '#d97706' : '#1b8a4b');
+
+      if (!state.basePt || !state.topPt || !state.crownStats) {
+        els.resultBanner.className = 'result-banner rank-pending';
+        els.resultRank.textContent = '写真で位置指定を完了してください';
+        els.resultSub.textContent = '①根元 → ②樹頂 → ③樹冠囲み を設定すると自動計算します';
+        els.breakSf.textContent = '--';
+        els.breakCrit.textContent = '限界風速目安: --';
+        els.rootSf.textContent = '--';
+        els.rootCrit.textContent = '限界風速目安: --';
+        els.outArea.textContent = '--';
+        els.outZc.textContent = '--';
+        els.outXc.textContent = '--';
+        els.outMoment.textContent = '--';
+        els.outResist.textContent = '--';
+        state.lastReportText = '';
+        return;
+      }
+
+      const treePx = Math.hypot(state.topPt.x - state.basePt.x, state.topPt.y - state.basePt.y);
+      if (treePx < 10) return;
+      const mPerPx = H / treePx;
+
+      const areaM2 = state.crownStats.areaPx * mPerPx * mPerPx;
+      const zc = Math.max(0.5, (state.basePt.y - state.crownStats.cy) * mPerPx);
+      const dx = (state.crownStats.cx - state.basePt.x) * mPerPx;
+      const xc = Math.abs(dx);
+      const dirText = Math.abs(dx) < 0.15 ? 'ほぼ直上' : (dx < 0 ? '左側へ傾き' : '右側へ傾き');
+
+      const sp = SPECIES[els.species.value] || SPECIES.sugi;
+
+      // 立地・劣化補正係数
+      let rootFactor = 1.0;
+      let stemFactor = 1.0;
+      let windFactor = 1.0;
+      const checkedLabels = [];
+      if (els.chkSlope.checked) { rootFactor *= 0.70; checkedLabels.push('法面/根浅'); }
+      if (els.chkWet.checked)   { rootFactor *= 0.75; checkedLabels.push('ぬかるみ/軟弱'); }
+      if (els.chkEdge.checked)  { windFactor *= 1.15; checkedLabels.push('林縁/強風'); }
+      if (els.chkDecay.checked) { rootFactor *= 0.60; stemFactor *= 0.60; checkedLabels.push('腐朽/空洞'); }
+
+      // 転倒モーメント (N*m)
+      const rho = 1.225;
+      const cd = 0.30; // 強風時の枝葉たなびきを考慮した針葉樹実効抗力係数
+      const kWind = 0.5 * rho * cd * areaM2 * zc * windFactor; // V^2に掛ける係数
+      const mWind = kWind * V * V;
+
+      // 幹材積・重量・自重偏心モーメント
+      const formFactor = 0.45;
+      const stemVol = (Math.PI / 4) * D * D * H * formFactor;
+      const stemMass = stemVol * sp.density;
+      const effMass = stemMass * 1.25 * 0.70; // 枝葉込み・重心偏心寄与
+      const mGrav = effMass * 9.81 * xc;
+      const mTotal = mWind + mGrav;
+
+      // 抵抗モーメント (N*m)
+      const mBreak = (Math.PI / 32) * (sp.mor * 1e6) * Math.pow(D, 3) * stemFactor;
+      const mRoot = sp.cReg * stemMass * rootFactor;
+
+      // 安全率 & 限界風速
+      const sfBreak = mBreak / Math.max(1, mTotal);
+      const sfRoot = mRoot / Math.max(1, mTotal);
+      const vCritBreak = mBreak <= mGrav ? 0 : Math.sqrt((mBreak - mGrav) / Math.max(0.01, kWind));
+      const vCritRoot = mRoot <= mGrav ? 0 : Math.sqrt((mRoot - mGrav) / Math.max(0.01, kWind));
+
+      const sfMin = Math.min(sfBreak, sfRoot);
+      const vCritMin = Math.min(vCritBreak, vCritRoot);
+      const weakType = sfRoot <= sfBreak ? '根返り' : '幹折れ';
+
+      // 総合判定
+      let rankClass = 'rank-safe';
+      let rankText = 'リスク：低（安全域）';
+      if (sfMin < 1.0) {
+        rankClass = 'rank-critical';
+        rankText = `リスク：極めて高い（${weakType}危険）`;
+      } else if (sfMin < 1.3) {
+        rankClass = 'rank-danger';
+        rankText = `リスク：高（${weakType}要警戒）`;
+      } else if (sfMin < 1.8) {
+        rankClass = 'rank-warn';
+        rankText = `リスク：中（${weakType}注意）`;
+      }
+
+      const fmtCrit = (v) => v >= 60 ? '60 m/s以上' : `約 ${v.toFixed(1)} m/s`;
+
+      els.resultBanner.className = `result-banner ${rankClass}`;
+      els.resultRank.textContent = rankText;
+      els.resultSub.textContent = `風速 ${V}m/s 時の最小安全率 ${sfMin.toFixed(2)} ／ 推定限界風速 ${fmtCrit(vCritMin)}（${weakType}先行）`;
+
+      els.breakSf.textContent = `安全率 ${sfBreak.toFixed(2)}`;
+      els.breakSf.style.color = sfColor(sfBreak);
+      els.breakCrit.textContent = `限界風速目安: ${fmtCrit(vCritBreak)}`;
+
+      els.rootSf.textContent = `安全率 ${sfRoot.toFixed(2)}`;
+      els.rootSf.style.color = sfColor(sfRoot);
+      els.rootCrit.textContent = `限界風速目安: ${fmtCrit(vCritRoot)}`;
+
+      els.outArea.textContent = `${areaM2.toFixed(1)} m²`;
+      els.outZc.textContent = `${zc.toFixed(1)} m`;
+      els.outXc.textContent = `${xc.toFixed(2)} m（${dirText}）`;
+      els.outMoment.textContent = `${(mTotal / 1000).toFixed(1)} kN·m（風 ${(mWind/1000).toFixed(1)} ＋ 自重 ${(mGrav/1000).toFixed(1)}）`;
+      els.outResist.textContent = `${(mBreak / 1000).toFixed(1)} / ${(mRoot / 1000).toFixed(1)} kN·m`;
+
+      const now = new Date();
+      const dt = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      state.lastReportText = [
+        `【倒木診断 一次チェック結果】(${dt})`,
+        `樹種: ${sp.name} / 樹高: ${H}m / 胸高直径: ${Dcm}cm / 形状比: ${slenderness.toFixed(0)}`,
+        `樹冠面積: ${areaM2.toFixed(1)}m² / 重心高さ: ${zc.toFixed(1)}m / 重心ズレ: ${xc.toFixed(2)}m(${dirText})`,
+        `立地チェック: ${checkedLabels.length ? checkedLabels.join('・') : '特記事項なし'}`,
+        `想定風速 ${V}m/s 判定: ${rankText}`,
+        `・幹折れ安全率: ${sfBreak.toFixed(2)}（限界風速目安 ${fmtCrit(vCritBreak)}）`,
+        `・根返り安全率: ${sfRoot.toFixed(2)}（限界風速目安 ${fmtCrit(vCritRoot)}）`,
+        `※本結果は立木や土壌の状態で変わるため一次スクリーニングの目安です。`
+      ].join('\n');
+    }
+
+    function sfColor(sf) {
+      if (sf < 1.0) return '#7f1d1d';
+      if (sf < 1.3) return '#dc2626';
+      if (sf < 1.8) return '#d97706';
+      return '#1b8a4b';
+    }
+
+    // 入力変更の自動反映
+    [els.species, els.treeHeight, els.dbh, els.chkSlope, els.chkWet, els.chkEdge, els.chkDecay, els.windSlider]
+      .forEach(el => el.addEventListener('input', calculate));
+
+    document.querySelectorAll('.preset-row button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        els.windSlider.value = btn.dataset.wind;
+        calculate();
+      });
+    });
+
+    els.copyReportBtn.addEventListener('click', async () => {
+      if (!state.lastReportText) {
+        alert('先に写真で位置指定を完了してください。');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(state.lastReportText);
+        const orig = els.copyReportBtn.textContent;
+        els.copyReportBtn.textContent = '✅ コピーしました！';
+        setTimeout(() => els.copyReportBtn.textContent = orig, 1800);
+      } catch {
+        prompt('以下をコピーしてください', state.lastReportText);
+      }
+    });
+
+    // ====== Service Worker 登録 ＆ 超強力絶対リセット ======
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          const reg = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+          els.swStatus.textContent = 'オフライン動作対応済み（Service Worker 稼働中）';
+
+          // 新しいSWが控えていたら即切り替え
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            if (!newWorker) return;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          });
+
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+          });
+        } catch (err) {
+          els.swStatus.textContent = 'Service Worker 登録不可（HTTPSまたはlocalhostで有効）';
+        }
+      });
+    }
+
+    // 超強力絶対リセットボタン：SW全解除＋Cache全削除＋強制リロード
+    els.forceResetBtn.addEventListener('click', async () => {
+      if (!confirm('キャッシュとService Workerを完全にリセットして最新版を再読み込みしますか？')) return;
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const reg of regs) {
+            if (reg.active) reg.active.postMessage({ type: 'NUKE_CACHE' });
+            await reg.unregister();
+          }
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+      } finally {
+        const url = new URL(window.location.href);
+        url.searchParams.set('_reset', Date.now());
+        window.location.replace(url.toString());
+      }
+    });
+
+    calculate();
+  </script>
+</body>
+</html>
