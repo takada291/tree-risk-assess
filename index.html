@@ -4,21 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#1f5135">
-  <title>倒木診断 v0.2</title>
+  <title>倒木診断 v0.3</title>
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icon_tree-risk.jpg" type="image/jpeg">
   <link rel="apple-touch-icon" href="./icon_tree-risk.jpg">
-  
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXBP6CPKLP"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
 
-      // ここも測定IDに書き換えます
-      gtag('config', 'G-WXBP6CPKLP');
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXBP6CPKLP"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    // ここも測定IDに書き換えます
+    gtag('config', 'G-WXBP6CPKLP');
   </script>
-  
+
   <style>
     :root {
       --primary: #1f5135;
@@ -128,6 +128,11 @@
       color: #fff;
       border-color: #2563eb;
     }
+    button.orange {
+      background: #e65100;
+      color: #fff;
+      border-color: #e65100;
+    }
     button.active-step {
       background: #e6f4ec;
       border-color: var(--primary);
@@ -203,6 +208,31 @@
       text-align: center;
       padding: 30px 16px;
     }
+
+    /* 層積検尺風 十字マーカー操作バー */
+    .pole-action-bar {
+      display: none;
+      margin-top: 10px;
+      background: #fff3e0;
+      border: 2px solid #ffb74d;
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .pole-action-msg {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: #e65100;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .pole-action-btns {
+      display: flex;
+      gap: 8px;
+    }
+    .pole-action-btns button {
+      flex: 1;
+    }
+
     .form-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -263,6 +293,13 @@
       border: 1px solid #bfdbfe;
       border-radius: 8px;
       padding: 12px;
+      margin-bottom: 10px;
+    }
+    .snow-box {
+      background: #f0fdfa;
+      border: 1px solid #99f6e4;
+      border-radius: 8px;
+      padding: 12px;
       margin-bottom: 12px;
     }
     .wind-header {
@@ -272,14 +309,27 @@
       margin-bottom: 6px;
     }
     .wind-val {
-      font-size: 1.5rem;
+      font-size: 1.45rem;
       font-weight: 800;
       color: #1d4ed8;
+    }
+    .snow-val {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: #0f766e;
+    }
+    .snow-note {
+      font-size: 0.75rem;
+      color: #115e59;
+      margin-top: 6px;
     }
     input[type="range"] {
       width: 100%;
       height: 28px;
       accent-color: #1d4ed8;
+    }
+    input[type="range"].snow-range {
+      accent-color: #0f766e;
     }
     .preset-row {
       display: flex;
@@ -289,7 +339,7 @@
     .preset-row button {
       flex: 1;
       padding: 6px 4px;
-      font-size: 0.78rem;
+      font-size: 0.76rem;
     }
     .result-banner {
       border-radius: 10px;
@@ -304,11 +354,11 @@
     .rank-critical { background: var(--critical); }
     .rank-pending { background: #6b7280; }
     .result-rank {
-      font-size: 1.4rem;
+      font-size: 1.38rem;
       font-weight: 800;
     }
     .result-sub {
-      font-size: 0.86rem;
+      font-size: 0.85rem;
       opacity: 0.95;
       margin-top: 3px;
     }
@@ -369,14 +419,14 @@
 </head>
 <body>
   <header>
-    <h1>🌲 倒木診断 <span class="ver-badge">v0.2</span></h1>
+    <h1>🌲 倒木診断 <span class="ver-badge">v0.3</span></h1>
     <span id="offlineBadge" class="ver-badge">オンライン</span>
   </header>
 
   <main>
     <div class="notice-box">
       <strong>【一次診断の目安ツール】</strong><br>
-      針葉樹（スギ・ヒノキ等）を対象とした簡易力学判定です。地中の根の状態や幹内部の腐朽は写真から判定できないため、<strong>立木や土壌の状態で大きく変わります。優先伐採・詳細点検の目安</strong>としてご活用ください。
+      針葉樹（スギ・ヒノキ等）を対象とした簡易力学判定です。地中の根の状態や幹内部の腐朽、雪質（湿雪・乾雪）で大きく変わるため、<strong>優先伐採・詳細点検の目安</strong>としてご活用ください。
     </div>
 
     <!-- 1. 写真・マーキング -->
@@ -416,6 +466,17 @@
           （根元にポールを鉛直に立てると傾き補正ができます）
         </div>
         <canvas id="treeCanvas" style="display:none;"></canvas>
+      </div>
+
+      <!-- 層積検尺風：十字マーカー調整バー -->
+      <div id="poleActionBar" class="pole-action-bar">
+        <div class="pole-action-msg">
+          👆 画面上の2つの「＋」を指でドラッグしてポールの両端に合わせ、確定を押してください
+        </div>
+        <div class="pole-action-btns">
+          <button type="button" id="cancelPoleBarBtn" class="danger-outline" style="flex:0.45;">✖ 解除</button>
+          <button type="button" id="confirmPoleBtn" class="orange">✅ ポール鉛直補正を確定</button>
+        </div>
       </div>
     </section>
 
@@ -483,19 +544,38 @@
       </div>
     </section>
 
-    <!-- 4. 風速シミュレーション・診断結果 -->
+    <!-- 4. 風速・積雪シミュレーション・診断結果 -->
     <section class="card">
-      <h2>4. 診断結果（瞬間最大風速シミュレーション）</h2>
+      <h2>4. 診断結果（風速・積雪シミュレーション）</h2>
+
       <div class="wind-box">
         <div class="wind-header">
-          <span style="font-weight:600; font-size:0.9rem;">想定する瞬間最大風速</span>
+          <span style="font-weight:600; font-size:0.9rem;">💨 想定する瞬間最大風速</span>
           <span class="wind-val"><span id="windDisplay">25</span> m/s</span>
         </div>
-        <input type="range" id="windSlider" min="10" max="50" step="1" value="25">
+        <input type="range" id="windSlider" min="0" max="50" step="1" value="25">
         <div class="preset-row">
+          <button type="button" data-wind="0">無風 0m/s</button>
           <button type="button" data-wind="15">強風 15m/s</button>
           <button type="button" data-wind="25">暴風 25m/s</button>
           <button type="button" data-wind="35">台風 35m/s</button>
+        </div>
+      </div>
+
+      <div class="snow-box">
+        <div class="wind-header">
+          <span style="font-weight:600; font-size:0.9rem;">❄️ 想定する積雪深（冠雪考慮）</span>
+          <span class="snow-val"><span id="snowDisplay">0.0</span> m</span>
+        </div>
+        <input type="range" id="snowSlider" class="snow-range" min="0" max="3.0" step="0.1" value="0">
+        <div class="preset-row">
+          <button type="button" data-snow="0">無雪 0m</button>
+          <button type="button" data-snow="0.5">0.5 m</button>
+          <button type="button" data-snow="1.0">1.0 m</button>
+          <button type="button" data-snow="2.0">2.0 m</button>
+        </div>
+        <div class="snow-note">
+          ※湿雪の冠雪荷重・細長い木のたわみ増幅（座屈傾向）・着雪による受風増を簡易反映します。
         </div>
       </div>
 
@@ -522,7 +602,8 @@
         <tr><th>樹冠の重心高さ zc</th><td id="outZc">--</td></tr>
         <tr><th>根元からの重心ズレ xc</th><td id="outXc">--</td></tr>
         <tr><th>鉛直基準（ポール補正）</th><td id="outPole">未設定（画面の真上）</td></tr>
-        <tr><th>転倒モーメント（風＋傾き自重）</th><td id="outMoment">--</td></tr>
+        <tr><th>推定冠雪重量（湿雪目安）</th><td id="outSnow">0 kg（無雪）</td></tr>
+        <tr><th>転倒モーメント（風＋自重・冠雪）</th><td id="outMoment">--</td></tr>
         <tr><th>抵抗モーメント（幹折れ / 根返り）</th><td id="outResist">--</td></tr>
       </table>
 
@@ -542,26 +623,29 @@
 
   <script>
     // ====== 樹種パラメータ（目安値） ======
+    // mor: 立木曲げ強さ目安(MPa), density: 生材密度(kg/m3), cReg: 根返り抵抗係数(N*m/kg), eGpa: 生材ヤング係数目安(GPa)
     const SPECIES = {
-      sugi:      { name: 'スギ',         mor: 32, density: 750, cReg: 130 },
-      hinoki:    { name: 'ヒノキ',       mor: 40, density: 800, cReg: 115 },
-      akamatsu:  { name: 'アカマツ',     mor: 38, density: 820, cReg: 140 },
-      karamatsu: { name: 'カラマツ',     mor: 38, density: 800, cReg: 125 },
-      other:     { name: 'その他針葉樹', mor: 34, density: 770, cReg: 125 }
+      sugi:      { name: 'スギ',         mor: 32, density: 750, cReg: 130, eGpa: 7.0 },
+      hinoki:    { name: 'ヒノキ',       mor: 40, density: 800, cReg: 115, eGpa: 8.5 },
+      akamatsu:  { name: 'アカマツ',     mor: 38, density: 820, cReg: 140, eGpa: 8.0 },
+      karamatsu: { name: 'カラマツ',     mor: 38, density: 800, cReg: 125, eGpa: 8.5 },
+      other:     { name: 'その他針葉樹', mor: 34, density: 770, cReg: 125, eGpa: 7.5 }
     };
 
     // ====== 状態管理 ======
     const state = {
       img: null,
-      mode: 'base', // 'base' | 'top' | 'crown' | 'pole'
-      basePt: null, // {x, y}
+      mode: 'base',         // 'base' | 'top' | 'crown' | 'pole'
+      basePt: null,         // {x, y}
       topPt: null,
-      polePts: [],  // [{x, y}, {x, y}] ポール2点（任意）
+      polePts: [],          // [{x, y}, {x, y}] 十字マーカー2点（任意）
+      isPoleConfirmed: false,
+      draggingPoleIdx: -1,  // 0 or 1（十字マーカーのドラッグ中）
       crownPts: [],
       isDrawing: false,
-      crownStats: null, // { areaPx, cx, cy }
+      crownStats: null,     // { areaPx, cx, cy }
       lastReportText: '',
-      lastCalc: null    // 画像保存用の最新計算結果
+      lastCalc: null
     };
 
     const canvas = document.getElementById('treeCanvas');
@@ -579,6 +663,9 @@
       poleStatusBadge: document.getElementById('poleStatusBadge'),
       poleAngleText: document.getElementById('poleAngleText'),
       clearPoleBtn: document.getElementById('clearPoleBtn'),
+      poleActionBar: document.getElementById('poleActionBar'),
+      confirmPoleBtn: document.getElementById('confirmPoleBtn'),
+      cancelPoleBarBtn: document.getElementById('cancelPoleBarBtn'),
       species: document.getElementById('species'),
       treeHeight: document.getElementById('treeHeight'),
       dbh: document.getElementById('dbh'),
@@ -589,6 +676,8 @@
       chkDecay: document.getElementById('chkDecay'),
       windSlider: document.getElementById('windSlider'),
       windDisplay: document.getElementById('windDisplay'),
+      snowSlider: document.getElementById('snowSlider'),
+      snowDisplay: document.getElementById('snowDisplay'),
       resultBanner: document.getElementById('resultBanner'),
       resultRank: document.getElementById('resultRank'),
       resultSub: document.getElementById('resultSub'),
@@ -600,6 +689,7 @@
       outZc: document.getElementById('outZc'),
       outXc: document.getElementById('outXc'),
       outPole: document.getElementById('outPole'),
+      outSnow: document.getElementById('outSnow'),
       outMoment: document.getElementById('outMoment'),
       outResist: document.getElementById('outResist'),
       copyReportBtn: document.getElementById('copyReportBtn'),
@@ -623,7 +713,6 @@
     function getVerticalBasis() {
       if (state.polePts.length === 2) {
         const [p1, p2] = state.polePts;
-        // 画面上方向（yが小さい方）を上端とする
         const topP = p1.y <= p2.y ? p1 : p2;
         const botP = p1.y <= p2.y ? p2 : p1;
         const dx = topP.x - botP.x;
@@ -641,18 +730,50 @@
       return { ux: 0, uy: -1, rx: 1, ry: 0, angleDeg: 0, active: false };
     }
 
+    // ====== 十字マーカーの初期配置 ======
+    function initPoleCrosshairsIfNeeded() {
+      if (!state.img || state.polePts.length === 2) return;
+      const w = canvas.width;
+      const h = canvas.height;
+      // 根元が指定済みならその少し右に縦配置、未指定なら中央やや右に縦配置
+      const cx = state.basePt
+        ? Math.min(w * 0.88, Math.max(w * 0.12, state.basePt.x + w * 0.08))
+        : Math.round(w * 0.65);
+      const botY = state.basePt
+        ? Math.min(h * 0.92, state.basePt.y)
+        : Math.round(h * 0.80);
+      const topY = Math.max(h * 0.15, botY - Math.round(h * 0.18));
+
+      state.polePts = [
+        { x: Math.round(cx), y: Math.round(topY) },
+        { x: Math.round(cx), y: Math.round(botY) }
+      ];
+      state.isPoleConfirmed = false;
+    }
+
     // ====== モード切替・ガイド更新 ======
     function setMode(mode) {
+      if (mode === 'pole' && !state.img) {
+        alert('先に写真を読み込むか「テスト木」を押してください。');
+        return;
+      }
       state.mode = mode;
+      if (mode === 'pole') {
+        initPoleCrosshairsIfNeeded();
+        state.isPoleConfirmed = false;
+      }
       document.querySelectorAll('.step-btn').forEach(btn => {
         btn.classList.toggle('active-step', btn.dataset.mode === mode);
       });
       updateGuide();
+      renderCanvas();
+      calculate();
     }
 
     function updateGuide() {
       const basis = getVerticalBasis();
       els.poleStepBtn.classList.toggle('pole-active', basis.active && state.mode !== 'pole');
+      els.poleActionBar.style.display = (state.img && state.mode === 'pole') ? 'block' : 'none';
 
       if (basis.active) {
         const sign = basis.angleDeg >= 0 ? '+' : '';
@@ -673,11 +794,7 @@
       } else if (state.mode === 'crown') {
         els.stepGuideText.textContent = '③ 枝葉（樹冠）の範囲を指やマウスでぐるっと囲んでください。';
       } else if (state.mode === 'pole') {
-        if (state.polePts.length === 1) {
-          els.stepGuideText.textContent = '📏 ポールのもう一方の端（2点目）をタップしてください。';
-        } else {
-          els.stepGuideText.textContent = '📏 ポールの【下端】と【上端】を2点タップすると鉛直線を補正します。';
-        }
+        els.stepGuideText.textContent = '📏 2つの「＋」を指でドラッグしてポールの両端に合わせ、確定を押してください。';
       }
     }
 
@@ -685,17 +802,43 @@
       btn.addEventListener('click', () => setMode(btn.dataset.mode));
     });
 
-    els.clearPoleBtn.addEventListener('click', () => {
+    function clearPoleCorrection() {
       state.polePts = [];
-      updateGuide();
-      renderCanvas();
-      calculate();
+      state.isPoleConfirmed = false;
+      state.draggingPoleIdx = -1;
+      if (state.mode === 'pole') {
+        setMode(!state.basePt ? 'base' : (!state.topPt ? 'top' : 'crown'));
+      } else {
+        updateGuide();
+        renderCanvas();
+        calculate();
+      }
+    }
+
+    els.clearPoleBtn.addEventListener('click', clearPoleCorrection);
+    els.cancelPoleBarBtn.addEventListener('click', clearPoleCorrection);
+
+    els.confirmPoleBtn.addEventListener('click', () => {
+      if (state.polePts.length === 2) {
+        const dist = Math.hypot(
+          state.polePts[1].x - state.polePts[0].x,
+          state.polePts[1].y - state.polePts[0].y
+        );
+        if (dist < 5) {
+          alert('2つの十字マーカーが重なっています。ポールの両端へ離して配置してください。');
+          return;
+        }
+        state.isPoleConfirmed = true;
+      }
+      // まだ未完了のステップがあればそこへ、全て完了していれば樹冠モードへ戻る
+      const nextMode = !state.basePt ? 'base' : (!state.topPt ? 'top' : 'crown');
+      setMode(nextMode);
     });
 
     // ====== 画像読み込み（撮影・選択 共通処理） ======
     function handleFileSelect(e) {
       const file = e.target.files[0];
-      e.target.value = ''; // 同じ写真を再選択しても発火させる
+      e.target.value = '';
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
@@ -742,14 +885,12 @@
       off.height = 800;
       const c = off.getContext('2d');
 
-      // 背景（空）
       const grad = c.createLinearGradient(0, 0, 0, 800);
       grad.addColorStop(0, '#cfe8ff');
       grad.addColorStop(1, '#eef6ff');
       c.fillStyle = grad;
       c.fillRect(0, 0, 600, 800);
 
-      // 斜面と道路
       c.fillStyle = '#7c8b6f';
       c.beginPath();
       c.moveTo(0, 760);
@@ -759,7 +900,6 @@
       c.closePath();
       c.fill();
 
-      // 幹（少し左へ傾き）
       c.strokeStyle = '#5c4033';
       c.lineWidth = 18;
       c.lineCap = 'round';
@@ -768,7 +908,6 @@
       c.quadraticCurveTo(300, 400, 275, 110);
       c.stroke();
 
-      // 樹冠（左側に張り出した針葉樹）
       c.fillStyle = '#2d5a27';
       c.beginPath();
       c.moveTo(275, 95);
@@ -782,7 +921,6 @@
       c.closePath();
       c.fill();
 
-      // 2mポール（赤白・わずかに傾けて写った状態を再現）
       c.save();
       c.translate(352, 635);
       c.rotate(0.06);
@@ -808,12 +946,12 @@
       state.basePt = null;
       state.topPt = null;
       state.polePts = [];
+      state.isPoleConfirmed = false;
+      state.draggingPoleIdx = -1;
       state.crownPts = [];
       state.crownStats = null;
       state.lastCalc = null;
       setMode('base');
-      renderCanvas();
-      calculate();
     }
 
     els.clearMarksBtn.addEventListener('click', () => {
@@ -827,8 +965,8 @@
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       return {
-        x: (e.clientX - rect.left) * scaleX,
-        y: (e.clientY - rect.top) * scaleY
+        x: Math.max(0, Math.min(canvas.width, (e.clientX - rect.left) * scaleX)),
+        y: Math.max(0, Math.min(canvas.height, (e.clientY - rect.top) * scaleY))
       };
     }
 
@@ -841,24 +979,28 @@
       if (state.mode === 'base') {
         state.basePt = pt;
         setMode('top');
-        renderCanvas();
-        calculate();
       } else if (state.mode === 'top') {
         state.topPt = pt;
         setMode('crown');
-        renderCanvas();
-        calculate();
       } else if (state.mode === 'crown') {
         state.isDrawing = true;
         state.crownPts = [pt];
         state.crownStats = null;
         renderCanvas();
-      } else if (state.mode === 'pole') {
-        if (state.polePts.length >= 2) {
-          state.polePts = [pt];
+      } else if (state.mode === 'pole' && state.polePts.length === 2) {
+        const d0 = Math.hypot(pt.x - state.polePts[0].x, pt.y - state.polePts[0].y);
+        const d1 = Math.hypot(pt.x - state.polePts[1].x, pt.y - state.polePts[1].y);
+        const hitRadius = Math.max(80, canvas.width * 0.14);
+        if (d0 <= d1 && d0 < hitRadius) {
+          state.draggingPoleIdx = 0;
+        } else if (d1 < d0 && d1 < hitRadius) {
+          state.draggingPoleIdx = 1;
         } else {
-          state.polePts.push(pt);
+          // 少し離れた場所をタップした場合は近い方の十字を引き寄せる
+          state.draggingPoleIdx = d0 <= d1 ? 0 : 1;
         }
+        state.isPoleConfirmed = false;
+        state.polePts[state.draggingPoleIdx] = pt;
         updateGuide();
         renderCanvas();
         calculate();
@@ -866,6 +1008,16 @@
     });
 
     canvas.addEventListener('pointermove', (e) => {
+      if (!state.img) return;
+      if (state.mode === 'pole' && state.draggingPoleIdx !== -1) {
+        e.preventDefault();
+        const pt = getCanvasPoint(e);
+        state.polePts[state.draggingPoleIdx] = pt;
+        updateGuide();
+        renderCanvas();
+        calculate();
+        return;
+      }
       if (!state.isDrawing || state.mode !== 'crown') return;
       e.preventDefault();
       const pt = getCanvasPoint(e);
@@ -876,7 +1028,12 @@
       }
     });
 
-    function finishCrownDrawing() {
+    function finishPointerAction() {
+      if (state.draggingPoleIdx !== -1) {
+        state.draggingPoleIdx = -1;
+        renderCanvas();
+        calculate();
+      }
       if (!state.isDrawing) return;
       state.isDrawing = false;
       if (state.crownPts.length >= 5) {
@@ -889,8 +1046,8 @@
       calculate();
     }
 
-    canvas.addEventListener('pointerup', finishCrownDrawing);
-    canvas.addEventListener('pointercancel', finishCrownDrawing);
+    canvas.addEventListener('pointerup', finishPointerAction);
+    canvas.addEventListener('pointercancel', finishPointerAction);
 
     // ====== 樹冠ポリゴンから面積(px^2)と重心(px)を安定算出 ======
     function computeCrownMaskStats(pts, w, h) {
@@ -935,8 +1092,48 @@
       };
     }
 
+    // ====== 層積検尺風 十字マーカー描画 ======
+    function drawCrosshair(x, y, isDragging) {
+      const arm = isDragging
+        ? Math.max(46, canvas.width * 0.055)
+        : Math.max(34, canvas.width * 0.042);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x - arm, y);
+      ctx.lineTo(x + arm, y);
+      ctx.moveTo(x, y - arm);
+      ctx.lineTo(x, y + arm);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(7, canvas.width / 110);
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(x - arm, y);
+      ctx.lineTo(x + arm, y);
+      ctx.moveTo(x, y - arm);
+      ctx.lineTo(x, y + arm);
+      ctx.strokeStyle = isDragging ? '#ff6d00' : '#d50000';
+      ctx.lineWidth = Math.max(3.5, canvas.width / 200);
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(x, y, isDragging ? 14 : 10, 0, 2 * Math.PI);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, 2 * Math.PI);
+      ctx.fillStyle = '#00e676';
+      ctx.fill();
+      ctx.restore();
+    }
+
     // ====== Canvas 描画 ======
-    function renderCanvas() {
+    function renderCanvas(forExport = false) {
       if (!state.img) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(state.img, 0, 0);
@@ -958,23 +1155,6 @@
         ctx.lineWidth = lw;
         ctx.fill();
         ctx.stroke();
-        ctx.restore();
-      }
-
-      // ポール鉛直補正ライン
-      if (state.polePts.length > 0) {
-        ctx.save();
-        if (state.polePts.length === 2) {
-          ctx.strokeStyle = '#facc15';
-          ctx.lineWidth = lw * 1.4;
-          ctx.beginPath();
-          ctx.moveTo(state.polePts[0].x, state.polePts[0].y);
-          ctx.lineTo(state.polePts[1].x, state.polePts[1].y);
-          ctx.stroke();
-        }
-        state.polePts.forEach((p, idx) => {
-          drawMarker(p.x, p.y, '#eab308', idx === 0 ? 'P1' : 'P2', lw * 0.85);
-        });
         ctx.restore();
       }
 
@@ -1028,6 +1208,38 @@
 
       if (state.basePt) drawMarker(state.basePt.x, state.basePt.y, '#2563eb', '根元', lw);
       if (state.topPt) drawMarker(state.topPt.x, state.topPt.y, '#0ea5e9', '樹頂', lw);
+
+      // ポール鉛直補正の描画
+      if (state.polePts.length === 2) {
+        const [p1, p2] = state.polePts;
+        const showBigCrosshairs = !forExport && state.mode === 'pole';
+
+        ctx.save();
+        // 白フチ付き連結ライン
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.lineWidth = showBigCrosshairs ? lw * 2.2 : lw * 1.8;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = state.isPoleConfirmed ? '#00e676' : '#facc15';
+        ctx.lineWidth = lw * 1.1;
+        if (showBigCrosshairs && !state.isPoleConfirmed) ctx.setLineDash([lw * 3, lw * 2]);
+        ctx.stroke();
+        ctx.restore();
+
+        if (showBigCrosshairs) {
+          drawCrosshair(p1.x, p1.y, state.draggingPoleIdx === 0);
+          drawCrosshair(p2.x, p2.y, state.draggingPoleIdx === 1);
+        } else {
+          drawMarker(p1.x, p1.y, '#eab308', 'P1', lw * 0.75);
+          drawMarker(p2.x, p2.y, '#eab308', 'P2', lw * 0.75);
+        }
+      }
     }
 
     function drawMarker(x, y, color, label, lw) {
@@ -1052,13 +1264,17 @@
       ctx.restore();
     }
 
-    // ====== 力学計算 ======
+    // ====== 力学計算（風荷重 ＋ 積雪冠雪荷重・たわみ増幅） ======
     function calculate() {
       const H = Math.max(1, parseFloat(els.treeHeight.value) || 20);
       const Dcm = Math.max(1, parseFloat(els.dbh.value) || 28);
       const D = Dcm / 100;
-      const V = parseFloat(els.windSlider.value) || 25;
-      els.windDisplay.textContent = V;
+      const V = parseFloat(els.windSlider.value);
+      const windSpeed = Number.isFinite(V) ? V : 25;
+      const snowM = Math.max(0, parseFloat(els.snowSlider.value) || 0);
+
+      els.windDisplay.textContent = windSpeed;
+      els.snowDisplay.textContent = snowM.toFixed(1);
 
       const basis = getVerticalBasis();
       const poleLabel = basis.active
@@ -1086,6 +1302,7 @@
         els.outArea.textContent = '--';
         els.outZc.textContent = '--';
         els.outXc.textContent = '--';
+        els.outSnow.textContent = snowM > 0 ? `積雪 ${snowM.toFixed(1)} m（位置指定後に算出）` : '0 kg（無雪）';
         els.outMoment.textContent = '--';
         els.outResist.textContent = '--';
         state.lastReportText = '';
@@ -1126,19 +1343,42 @@
       if (els.chkEdge.checked)  { windFactor *= 1.15; checkedLabels.push('林縁/強風'); }
       if (els.chkDecay.checked) { rootFactor *= 0.60; stemFactor *= 0.60; checkedLabels.push('腐朽/空洞'); }
 
+      // ====== 積雪（湿雪冠雪）モデル（目安） ======
+      // 樹冠水平投影面積目安: 側面投影面積の35%
+      // 樹冠上の実効冠雪厚(落雪による頭打ちを反映) × 湿雪密度(250kg/m3)
+      const crownHorizM2 = areaM2 * 0.35;
+      const effCanopySnowM = snowM > 0 ? (0.18 * snowM) / (1 + 0.40 * snowM) : 0;
+      const snowMassKg = crownHorizM2 * effCanopySnowM * 250;
+      const snowForceN = snowMassKg * 9.81;
+
+      // 冠雪によるたわみ増幅（P-Δ効果：細長い木ほど雪で急激に弱くなる）
+      const iDbh = (Math.PI / 64) * Math.pow(D, 4);
+      const iEff = iDbh * 0.50;
+      const pCrit = (Math.PI * Math.PI * (sp.eGpa * 1e9) * iEff) / (4 * zc * zc);
+      const snowBuckleRatio = snowM > 0 ? Math.min(0.80, snowForceN / Math.max(100, pCrit)) : 0;
+      const snowAmp = snowM > 0 ? 1 / (1 - snowBuckleRatio) : 1.0;
+
+      // 着雪による受風抵抗の増加（枝葉の隙間が埋まる影響：最大+30%）
+      const snowWindFactor = 1 + 0.12 * Math.min(snowM, 2.5);
+
       // 転倒モーメント (N*m)
       const rho = 1.225;
       const cd = 0.30;
-      const kWind = 0.5 * rho * cd * areaM2 * zc * windFactor;
-      const mWind = kWind * V * V;
+      const kWindBase = 0.5 * rho * cd * areaM2 * zc * windFactor * snowWindFactor;
+      const kWind = kWindBase * snowAmp;
+      const mWind = kWind * windSpeed * windSpeed;
 
-      // 幹材積・重量・自重偏心モーメント
+      // 幹材積・重量・自重＆冠雪の偏心モーメント
       const formFactor = 0.45;
       const stemVol = (Math.PI / 4) * D * D * H * formFactor;
       const stemMass = stemVol * sp.density;
       const effMass = stemMass * 1.25 * 0.70;
-      const mGrav = effMass * 9.81 * xc;
-      const mTotal = mWind + mGrav;
+      const mTreeGrav = effMass * 9.81 * xc;
+      // 積雪時は直立木でも偏着雪・微傾き(0.02*zc)が働く
+      const snowEccentricity = snowM > 0 ? (xc + 0.02 * zc) : 0;
+      const mSnowGrav = snowForceN * snowEccentricity;
+      const mStatic = (mTreeGrav + mSnowGrav) * snowAmp;
+      const mTotal = mWind + mStatic;
 
       // 抵抗モーメント (N*m)
       const mBreak = (Math.PI / 32) * (sp.mor * 1e6) * Math.pow(D, 3) * stemFactor;
@@ -1147,8 +1387,8 @@
       // 安全率 & 限界風速
       const sfBreak = mBreak / Math.max(1, mTotal);
       const sfRoot = mRoot / Math.max(1, mTotal);
-      const vCritBreak = mBreak <= mGrav ? 0 : Math.sqrt((mBreak - mGrav) / Math.max(0.01, kWind));
-      const vCritRoot = mRoot <= mGrav ? 0 : Math.sqrt((mRoot - mGrav) / Math.max(0.01, kWind));
+      const vCritBreak = mBreak <= mStatic ? 0 : Math.sqrt((mBreak - mStatic) / Math.max(0.01, kWind));
+      const vCritRoot = mRoot <= mStatic ? 0 : Math.sqrt((mRoot - mStatic) / Math.max(0.01, kWind));
 
       const sfMin = Math.min(sfBreak, sfRoot);
       const vCritMin = Math.min(vCritBreak, vCritRoot);
@@ -1171,24 +1411,32 @@
         rankText = `リスク：中（${weakType}注意）`;
       }
 
-      const fmtCrit = (v) => v >= 60 ? '60 m/s以上' : `約 ${v.toFixed(1)} m/s`;
+      const fmtSf = (v) => v >= 9.99 ? '9.99+' : v.toFixed(2);
+      const fmtCrit = (v) => {
+        if (v <= 0.05) return '0 m/s（無風でも危険）';
+        if (v >= 60) return '60 m/s以上';
+        return `約 ${v.toFixed(1)} m/s`;
+      };
 
       els.resultBanner.className = `result-banner ${rankClass}`;
       els.resultRank.textContent = rankText;
-      els.resultSub.textContent = `風速 ${V}m/s 時の最小安全率 ${sfMin.toFixed(2)} ／ 推定限界風速 ${fmtCrit(vCritMin)}（${weakType}先行）`;
+      els.resultSub.textContent = `風速 ${windSpeed}m/s・積雪 ${snowM.toFixed(1)}m 時の最小安全率 ${fmtSf(sfMin)} ／ 限界風速目安 ${fmtCrit(vCritMin)}（${weakType}先行）`;
 
-      els.breakSf.textContent = `安全率 ${sfBreak.toFixed(2)}`;
+      els.breakSf.textContent = `安全率 ${fmtSf(sfBreak)}`;
       els.breakSf.style.color = sfColor(sfBreak);
       els.breakCrit.textContent = `限界風速目安: ${fmtCrit(vCritBreak)}`;
 
-      els.rootSf.textContent = `安全率 ${sfRoot.toFixed(2)}`;
+      els.rootSf.textContent = `安全率 ${fmtSf(sfRoot)}`;
       els.rootSf.style.color = sfColor(sfRoot);
       els.rootCrit.textContent = `限界風速目安: ${fmtCrit(vCritRoot)}`;
 
       els.outArea.textContent = `${areaM2.toFixed(1)} m²`;
       els.outZc.textContent = `${zc.toFixed(1)} m`;
       els.outXc.textContent = `${xc.toFixed(2)} m（${dirText}）`;
-      els.outMoment.textContent = `${(mTotal / 1000).toFixed(1)} kN·m（風 ${(mWind/1000).toFixed(1)} ＋ 自重 ${(mGrav/1000).toFixed(1)}）`;
+      els.outSnow.textContent = snowM > 0
+        ? `約 ${Math.round(snowMassKg)} kg（たわみ増幅 ×${snowAmp.toFixed(2)}）`
+        : '0 kg（無雪）';
+      els.outMoment.textContent = `${(mTotal / 1000).toFixed(1)} kN·m（風 ${(mWind/1000).toFixed(1)} ＋ 自重・雪 ${(mStatic/1000).toFixed(1)}）`;
       els.outResist.textContent = `${(mBreak / 1000).toFixed(1)} / ${(mRoot / 1000).toFixed(1)} kN·m`;
 
       const now = new Date();
@@ -1197,9 +1445,14 @@
       state.lastCalc = {
         dt, spName: sp.name, H, Dcm, slenderness,
         areaM2, zc, xc, dirText, poleLabel,
+        snowM, snowKg: Math.round(snowMassKg), snowAmp,
         checkedText: checkedLabels.length ? checkedLabels.join('・') : '特記事項なし',
-        V, rankText, rankColor, sfMin, weakType,
-        sfBreak, sfRoot,
+        V: windSpeed, rankText, rankColor,
+        sfMinText: fmtSf(sfMin),
+        sfBreakText: fmtSf(sfBreak),
+        sfRootText: fmtSf(sfRoot),
+        sfRootRaw: sfRoot,
+        weakType,
         critBreakText: fmtCrit(vCritBreak),
         critRootText: fmtCrit(vCritRoot),
         critMinText: fmtCrit(vCritMin)
@@ -1210,11 +1463,12 @@
         `樹種: ${sp.name} / 樹高: ${H}m / 胸高直径: ${Dcm}cm / 形状比: ${slenderness.toFixed(0)}`,
         `樹冠面積: ${areaM2.toFixed(1)}m² / 重心高さ: ${zc.toFixed(1)}m / 重心ズレ: ${xc.toFixed(2)}m(${dirText})`,
         `鉛直基準: ${poleLabel}`,
+        `積雪条件: ${snowM.toFixed(1)}m${snowM > 0 ? `（推定冠雪 約${Math.round(snowMassKg)}kg / たわみ増幅 ×${snowAmp.toFixed(2)}）` : '（無雪）'}`,
         `立地チェック: ${state.lastCalc.checkedText}`,
-        `想定風速 ${V}m/s 判定: ${rankText}`,
-        `・幹折れ安全率: ${sfBreak.toFixed(2)}（限界風速目安 ${fmtCrit(vCritBreak)}）`,
-        `・根返り安全率: ${sfRoot.toFixed(2)}（限界風速目安 ${fmtCrit(vCritRoot)}）`,
-        `※本結果は立木や土壌の状態で変わるため一次スクリーニングの目安です。`
+        `想定風速 ${windSpeed}m/s・積雪 ${snowM.toFixed(1)}m 判定: ${rankText}`,
+        `・幹折れ安全率: ${fmtSf(sfBreak)}（限界風速目安 ${fmtCrit(vCritBreak)}）`,
+        `・根返り安全率: ${fmtSf(sfRoot)}（限界風速目安 ${fmtCrit(vCritRoot)}）`,
+        `※本結果は立木や土壌・雪質の状態で変わるため一次スクリーニングの目安です。`
       ].join('\n');
     }
 
@@ -1226,12 +1480,19 @@
     }
 
     // 入力変更の自動反映
-    [els.species, els.treeHeight, els.dbh, els.chkSlope, els.chkWet, els.chkEdge, els.chkDecay, els.windSlider]
+    [els.species, els.treeHeight, els.dbh, els.chkSlope, els.chkWet, els.chkEdge, els.chkDecay, els.windSlider, els.snowSlider]
       .forEach(el => el.addEventListener('input', calculate));
 
-    document.querySelectorAll('.preset-row button').forEach(btn => {
+    document.querySelectorAll('.preset-row button[data-wind]').forEach(btn => {
       btn.addEventListener('click', () => {
         els.windSlider.value = btn.dataset.wind;
+        calculate();
+      });
+    });
+
+    document.querySelectorAll('.preset-row button[data-snow]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        els.snowSlider.value = btn.dataset.snow;
         calculate();
       });
     });
@@ -1259,12 +1520,15 @@
         return;
       }
 
+      // 出力用には大きな十字マーカーを隠した状態で描画
+      renderCanvas(true);
+
       const d = state.lastCalc;
       const outW = Math.max(760, canvas.width);
-      const s = outW / 760; // レイアウト比率
+      const s = outW / 760;
       const imgH = Math.round(canvas.height * (outW / canvas.width));
-      const bannerH = Math.round(74 * s);
-      const bodyH = Math.round(188 * s);
+      const bannerH = Math.round(76 * s);
+      const bodyH = Math.round(216 * s);
       const outH = imgH + bannerH + bodyH;
 
       const outCanvas = document.createElement('canvas');
@@ -1275,20 +1539,23 @@
       // 1. マーキング済み写真を描画
       c.drawImage(canvas, 0, 0, outW, imgH);
 
+      // 画面側の表示を元に戻す
+      renderCanvas(false);
+
       // 2. 判定バナー帯
       c.fillStyle = d.rankColor;
       c.fillRect(0, imgH, outW, bannerH);
 
       c.fillStyle = '#ffffff';
       c.textBaseline = 'middle';
-      c.font = `bold ${Math.round(26 * s)}px sans-serif`;
+      c.font = `bold ${Math.round(25 * s)}px sans-serif`;
       c.fillText(d.rankText, Math.round(20 * s), imgH + Math.round(27 * s));
 
-      c.font = `${Math.round(16 * s)}px sans-serif`;
+      c.font = `${Math.round(15.5 * s)}px sans-serif`;
       c.fillText(
-        `想定風速 ${d.V}m/s（最小安全率 ${d.sfMin.toFixed(2)}） ／ 推定限界風速 ${d.critMinText}（${d.weakType}先行）`,
+        `想定風速 ${d.V}m/s・積雪 ${d.snowM.toFixed(1)}m（最小安全率 ${d.sfMinText}） ／ 限界風速 ${d.critMinText}`,
         Math.round(20 * s),
-        imgH + Math.round(54 * s)
+        imgH + Math.round(55 * s)
       );
 
       // 3. 診断詳細パネル（白背景）
@@ -1297,33 +1564,38 @@
       c.fillRect(0, panelY, outW, bodyH);
 
       const padX = Math.round(20 * s);
-      const col2X = Math.round(outW * 0.52);
+      const col2X = Math.round(outW * 0.51);
       const lh = Math.round(26 * s);
       let y1 = panelY + Math.round(28 * s);
 
       c.fillStyle = '#222222';
-      c.font = `bold ${Math.round(17 * s)}px sans-serif`;
+      c.font = `bold ${Math.round(16.5 * s)}px sans-serif`;
       c.fillText(`樹種: ${d.spName}  /  樹高: ${d.H}m  /  直径: ${d.Dcm}cm`, padX, y1);
-      c.fillText(`幹折れ: 安全率 ${d.sfBreak.toFixed(2)}（${d.critBreakText}）`, col2X, y1);
+      c.fillText(`幹折れ: 安全率 ${d.sfBreakText}（${d.critBreakText}）`, col2X, y1);
 
       y1 += lh;
-      c.font = `${Math.round(16 * s)}px sans-serif`;
+      c.font = `${Math.round(15.5 * s)}px sans-serif`;
       c.fillText(`形状比: ${d.slenderness.toFixed(0)}  /  樹冠面積: ${d.areaM2.toFixed(1)}m²`, padX, y1);
-      c.fillStyle = sfColor(d.sfRoot);
-      c.font = `bold ${Math.round(17 * s)}px sans-serif`;
-      c.fillText(`根返り: 安全率 ${d.sfRoot.toFixed(2)}（${d.critRootText}）`, col2X, y1);
+      c.fillStyle = sfColor(d.sfRootRaw);
+      c.font = `bold ${Math.round(16.5 * s)}px sans-serif`;
+      c.fillText(`根返り: 安全率 ${d.sfRootText}（${d.critRootText}）`, col2X, y1);
 
       y1 += lh;
       c.fillStyle = '#222222';
-      c.font = `${Math.round(16 * s)}px sans-serif`;
+      c.font = `${Math.round(15.5 * s)}px sans-serif`;
       c.fillText(`重心高さ: ${d.zc.toFixed(1)}m  /  ズレ: ${d.xc.toFixed(2)}m（${d.dirText}）`, padX, y1);
       c.fillText(`鉛直基準: ${d.poleLabel}`, col2X, y1);
+
+      y1 += lh;
+      const snowText = d.snowM > 0 ? `${d.snowM.toFixed(1)}m（冠雪 約${d.snowKg}kg）` : '0.0m（無雪）';
+      c.fillText(`積雪条件: ${snowText}`, padX, y1);
+      c.fillText(`先行要因: ${d.weakType}先行`, col2X, y1);
 
       y1 += lh;
       c.fillText(`立地チェック: ${d.checkedText}`, padX, y1);
 
       // 区切り線とフッター注記
-      const sepY = panelY + bodyH - Math.round(46 * s);
+      const sepY = panelY + bodyH - Math.round(44 * s);
       c.strokeStyle = '#e5e7eb';
       c.lineWidth = Math.max(1, Math.round(1.5 * s));
       c.beginPath();
@@ -1334,12 +1606,11 @@
       c.fillStyle = '#555555';
       c.font = `${Math.round(13.5 * s)}px sans-serif`;
       c.fillText(
-        `倒木診断 一次チェック目安（${d.dt}） ※立木や土壌の状態で大きく変わります`,
+        `倒木診断 一次チェック目安（${d.dt}） ※立木・土壌・雪質の状態で大きく変わります`,
         padX,
-        sepY + Math.round(24 * s)
+        sepY + Math.round(23 * s)
       );
 
-      // ファイル名生成: 倒木診断-YYYYMMDD-HHMM.jpg
       const now = new Date();
       const pad2 = (n) => String(n).padStart(2, '0');
       const fname = `倒木診断-${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}-${pad2(now.getHours())}${pad2(now.getMinutes())}.jpg`;
